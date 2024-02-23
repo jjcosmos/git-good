@@ -34,10 +34,14 @@ fn watch() {
 
         if process_running && !found {
             println!("Running file vc commands");
-            let _output = Command::new("cmd")
+            let output = Command::new("cmd")
                 .args(batch_file_path)
                 .output()
                 .expect("Failed to execute batch command");
+
+            for out in String::from_utf8(output.stdout).iter() {
+                println!("{}", out);
+            }
         }
 
         process_running = found;
