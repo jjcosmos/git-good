@@ -9,6 +9,7 @@ fn main() {
 fn watch() {
     let mut process_name: &str = &String::new();
     let mut batch_path: &str = &String::new();
+    let mut poll_timeout: u64 = 10u64;
 
     let config = Ini::load_from_file("config.ini")
         .expect("[ERROR] Failed to find ini file. Make sure one exists alongside the executable");
@@ -22,6 +23,15 @@ fn watch() {
                     }
                     if p.contains_key("process name") {
                         process_name = &p["process name"];
+                    }
+                    if p.contains_key("poll timeout") {
+                        poll_timeout = match p["poll timeout"].parse::<u64>() {
+                            Ok(t) => t,
+                            Err(_) => {
+                                println!("[WARN] Failed to parse poll timeout. Using default. Ensure value is non negative and greater than zero.");
+                                10u64
+                            }
+                        }
                     }
                 }
             }
@@ -70,7 +80,7 @@ fn watch() {
 
         process_running_prev = found;
 
-        let duration = time::Duration::from_secs(10);
+        let duration = time::Duration::from_secs(poll_timeout as u64);
         thread::sleep(duration)
     }
 }
