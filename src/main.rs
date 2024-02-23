@@ -1,27 +1,47 @@
 use core::time;
-use std::{process::Command, thread};
-
-use sysinfo::{Process, System};
+use ini::Ini;
+use std::{path::Path, process::Command, thread};
 
 fn main() {
     watch();
 }
 
 fn watch() {
-    // TODO: put in config
-    let process_name = "eldenring.exe";
-    let batch_file_path = &[
-        "/C",
-        "C:/Users/jason/AppData/Roaming/EldenRing/76561198140326014/commit_and_push.bat",
-    ];
+    let mut process_name: &str = &String::new();
+    let mut batch_path: &str = &String::new();
 
-    let mut process_running = false;
+    let config = Ini::load_from_file("config.ini")
+        .expect("[ERROR] Failed to find ini file. Make sure one exists alongside the executable");
+
+    for (s, p) in config.iter() {
+        match s {
+            Some(opt) => {
+                if opt == "Settings" {
+                    if p.contains_key("batch path") {
+                        batch_path = &p["batch path"];
+                    }
+                    if p.contains_key("process name") {
+                        process_name = &p["process name"];
+                    }
+                }
+            }
+            None => {}
+        }
+    }
+
+    if process_name.is_empty() || batch_path.is_empty() || !Path::new(batch_path).is_file() {
+        panic!(
+            "[ERROR] config.ini fields <process name> or <batch path> are either missing or incomplete!"
+        );
+    }
+
+    let mut process_running_prev = false;
 
     let mut system = sysinfo::System::new();
     loop {
         system.refresh_all();
 
-        let mut found = process_running;
+        let mut found = process_running_prev;
         for (_pid, process) in system.processes().iter() {
             if process.name().contains(process_name) {
                 found = true;
@@ -30,21 +50,25 @@ fn watch() {
             found = false;
         }
 
-        println!("Process running: {0}", found);
+        println!("[INFO] Process running: {0}", found);
 
-        if process_running && !found {
-            println!("Running file vc commands");
+        if process_running_prev && !found {
+            println!("[INFO] Running file vc commands");
+            let mut path = Path::new(batch_path).to_path_buf();
+            path.pop();
+
             let output = Command::new("cmd")
-                .args(batch_file_path)
+                .current_dir(path.to_str().unwrap())
+                .arg(batch_path)
                 .output()
                 .expect("Failed to execute batch command");
 
             for out in String::from_utf8(output.stdout).iter() {
-                println!("{}", out);
+                print!("{}", out);
             }
         }
 
-        process_running = found;
+        process_running_prev = found;
 
         let duration = time::Duration::from_secs(10);
         thread::sleep(duration)
