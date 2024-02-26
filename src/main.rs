@@ -1,9 +1,8 @@
 use core::time;
 use ini::Ini;
 use std::{
-    io::Write,
     path::Path,
-    process::{Command, Output},
+    process::{Command},
     thread,
 };
 
