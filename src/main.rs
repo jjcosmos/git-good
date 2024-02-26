@@ -1,6 +1,11 @@
 use core::time;
 use ini::Ini;
-use std::{path::Path, process::Command, thread};
+use std::{
+    io::Write,
+    path::Path,
+    process::{Command, Output},
+    thread,
+};
 
 fn main() {
     watch();
@@ -63,18 +68,31 @@ fn watch() {
         println!("[INFO] Process running: {0}", found);
 
         if process_running_prev && !found {
-            println!("[INFO] Running file vc commands");
+            println!("[INFO] Running {:?}", batch_path);
             let mut path = Path::new(batch_path).to_path_buf();
             path.pop();
 
+            let folder = Path::new(&path);
+            if !folder.is_dir() {
+                panic!("[ERROR] {:?} is not a directory", path);
+            }
+
+            let path_str = path.to_str().unwrap();
+
             let output = Command::new("cmd")
-                .current_dir(path.to_str().unwrap())
-                .arg(batch_path)
+                .current_dir(path_str)
+                .args(["/C", batch_path])
                 .output()
-                .expect("Failed to execute batch command");
+                .expect("Failed to run cmd");
+
+            println!("status: {}", output.status);
 
             for out in String::from_utf8(output.stdout).iter() {
-                print!("{}", out);
+                println!("STDOUT: {}", out);
+            }
+
+            for out_err in String::from_utf8(output.stderr).iter() {
+                println!("STDERR: {}", out_err);
             }
         }
 
